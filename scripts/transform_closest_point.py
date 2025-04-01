@@ -33,10 +33,15 @@ class ClosestPointDistPlotter:
         self.track_1 = None
         self.track_2 = None
         
-        # For plotting
+        # For plotting distances
         self.times = []
         self.track_1_dist_data = []
         self.track_2_dist_data = []
+        
+        # For plotting closest points
+        self.track_1_closest_points = []
+        self.track_2_closest_points = []
+        
         self.start_time = rospy.get_time()
         
         # Setup matplotlib for interactive real-time plotting
@@ -52,12 +57,14 @@ class ClosestPointDistPlotter:
         self.targets = np.array([[p.x, p.y, p.z] for p in msg.points])
 
     def track_1_callback(self, msg):
-        position = np.array([msg.pose.position.x, msg.pose.position.y, msg.pose.position.z])
+        p = msg.pose.position
+        position = np.array([p.x, p.y, p.z])
         # Transform PSM1 position from world frame to phantom frame
         self.track_1 = self.transform_to_phantom_frame(position)
 
     def track_2_callback(self, msg):
-        position = np.array([msg.pose.position.x, msg.pose.position.y, msg.pose.position.z])
+        p = msg.pose.position
+        position = np.array([p.x, p.y, p.z])
         # Transform PSM2 position from world frame to phantom frame
         self.track_2 = self.transform_to_phantom_frame(position)
     
@@ -84,25 +91,42 @@ class ClosestPointDistPlotter:
         return closest_point, min_distance
     
     def setup_plotting(self):
-        # Create figure for plotting distance only
+        # Create figure with two subplots
         plt.ion()  # Enable interactive mode
-        self.fig, self.ax = plt.subplots(figsize=(10, 6))
+        self.fig, (self.ax_dist, self.ax_points) = plt.subplots(2, 1, figsize=(12, 10))
         
-        # Title and labels
-        self.fig.suptitle('PSM Distance from Figure-8 Tube')
+        # Title for the whole figure
+        self.fig.suptitle('PSM Interaction with Figure-8 Tube', fontsize=16)
         
         # Setup for distance plot
-        self.ax.set_xlabel('Time (s)')
-        self.ax.set_ylabel('Distance (m)')
-        self.ax.set_ylim(0, 1.0)
-        self.ax.grid(True)
+        self.ax_dist.set_xlabel('Time (s)')
+        self.ax_dist.set_ylabel('Distance (m)')
+        self.ax_dist.set_ylim(0, 1.0)
+        self.ax_dist.set_title('Distance from Tube')
+        self.ax_dist.grid(True)
         
-        # Create empty line objects
-        self.line_psm1_dist, = self.ax.plot([], [], 'r-', label='PSM1 Distance')
-        self.line_psm2_dist, = self.ax.plot([], [], 'b-', label='PSM2 Distance')
+        # Create empty line objects for distance plot
+        self.line_psm1_dist, = self.ax_dist.plot([], [], 'r-', label='PSM1 Distance')
+        self.line_psm2_dist, = self.ax_dist.plot([], [], 'b-', label='PSM2 Distance')
+        self.ax_dist.legend(loc='upper right')
         
-        # Add legend
-        self.ax.legend(loc='upper right')
+        # Setup for closest point plot
+        self.ax_points.set_xlabel('Time (s)')
+        self.ax_points.set_ylabel('Closest Point Position')
+        self.ax_points.set_title('Change in Closest Point')
+        self.ax_points.grid(True)
+        
+        # Create empty line objects for closest point plot
+        # We'll plot x, y, z coordinates of the closest points
+        self.line_psm1_closest_x, = self.ax_points.plot([], [], 'r-', label='PSM1 Closest Point (X)')
+        self.line_psm1_closest_y, = self.ax_points.plot([], [], 'r--', label='PSM1 Closest Point (Y)')
+        self.line_psm1_closest_z, = self.ax_points.plot([], [], 'r:', label='PSM1 Closest Point (Z)')
+        
+        self.line_psm2_closest_x, = self.ax_points.plot([], [], 'b-', label='PSM2 Closest Point (X)')
+        self.line_psm2_closest_y, = self.ax_points.plot([], [], 'b--', label='PSM2 Closest Point (Y)')
+        self.line_psm2_closest_z, = self.ax_points.plot([], [], 'b:', label='PSM2 Closest Point (Z)')
+        
+        self.ax_points.legend(loc='upper right')
         
         # Set tight layout
         plt.tight_layout(rect=[0, 0, 1, 0.96])
@@ -113,22 +137,50 @@ class ClosestPointDistPlotter:
         if self.targets is not None and self.track_1 is not None and self.track_2 is not None:
             current_time = rospy.get_time() - self.start_time
 
-            _, min_dist_1 = self.find_closest_point_and_dist(targets=self.targets, source=self.track_1)
-            _, min_dist_2 = self.find_closest_point_and_dist(targets=self.targets, source=self.track_2)
+            # Find closest points and distances for both PSMs
+            closest_point_1, min_dist_1 = self.find_closest_point_and_dist(targets=self.targets, source=self.track_1)
+            closest_point_2, min_dist_2 = self.find_closest_point_and_dist(targets=self.targets, source=self.track_2)
 
-            # Append new data points
+            # Append new data points for distances
             self.times.append(current_time)
             self.track_1_dist_data.append(min_dist_1)
             self.track_2_dist_data.append(min_dist_2)
+            
+            # Append new data points for closest points
+            self.track_1_closest_points.append(closest_point_1)
+            self.track_2_closest_points.append(closest_point_2)
 
             print("MIN DIST 1: ", min_dist_1)
             print("MIN DIST 2:", min_dist_2)
+            print("CLOSEST POINT 1:", closest_point_1)
+            print("CLOSEST POINT 2:", closest_point_2)
 
-            # Update the plot
+            # Update the distance plot
             self.line_psm1_dist.set_data(self.times, self.track_1_dist_data)
             self.line_psm2_dist.set_data(self.times, self.track_2_dist_data)
-            self.ax.relim()            # Recompute the data limits
-            self.ax.autoscale_view()   # Autoscale the view to the new data
+            self.ax_dist.relim()            # Recompute the data limits
+            self.ax_dist.autoscale_view()   # Autoscale the view to the new data
+            
+            # Extract x, y, z coordinates of closest points
+            psm1_x = [point[0] for point in self.track_1_closest_points]
+            psm1_y = [point[1] for point in self.track_1_closest_points]
+            psm1_z = [point[2] for point in self.track_1_closest_points]
+            
+            psm2_x = [point[0] for point in self.track_2_closest_points]
+            psm2_y = [point[1] for point in self.track_2_closest_points]
+            psm2_z = [point[2] for point in self.track_2_closest_points]
+            
+            # Update the closest point plot
+            self.line_psm1_closest_x.set_data(self.times, psm1_x)
+            self.line_psm1_closest_y.set_data(self.times, psm1_y)
+            self.line_psm1_closest_z.set_data(self.times, psm1_z)
+            
+            self.line_psm2_closest_x.set_data(self.times, psm2_x)
+            self.line_psm2_closest_y.set_data(self.times, psm2_y)
+            self.line_psm2_closest_z.set_data(self.times, psm2_z)
+            
+            self.ax_points.relim()          # Recompute the data limits
+            self.ax_points.autoscale_view() # Autoscale the view to the new data
 
             plt.draw()
             plt.pause(0.001)
