@@ -38,9 +38,9 @@ class ClosestPointDistPlotter:
         self.track_1_dist_data = []
         self.track_2_dist_data = []
         
-        # For plotting closest points
-        self.track_1_closest_points = []
-        self.track_2_closest_points = []
+        # For plotting distance changes
+        self.track_1_dist_change = []
+        self.track_2_dist_change = []
         
         self.start_time = rospy.get_time()
         
@@ -93,7 +93,7 @@ class ClosestPointDistPlotter:
     def setup_plotting(self):
         # Create figure with two subplots
         plt.ion()  # Enable interactive mode
-        self.fig, (self.ax_dist, self.ax_points) = plt.subplots(2, 1, figsize=(12, 10))
+        self.fig, (self.ax_dist, self.ax_change) = plt.subplots(2, 1, figsize=(12, 10))
         
         # Title for the whole figure
         self.fig.suptitle('PSM Interaction with Figure-8 Tube', fontsize=16)
@@ -110,23 +110,16 @@ class ClosestPointDistPlotter:
         self.line_psm2_dist, = self.ax_dist.plot([], [], 'b-', label='PSM2 Distance')
         self.ax_dist.legend(loc='upper right')
         
-        # Setup for closest point plot
-        self.ax_points.set_xlabel('Time (s)')
-        self.ax_points.set_ylabel('Closest Point Position')
-        self.ax_points.set_title('Change in Closest Point')
-        self.ax_points.grid(True)
+        # Setup for distance change plot
+        self.ax_change.set_xlabel('Time (s)')
+        self.ax_change.set_ylabel('Distance Change Rate (m/s)')
+        self.ax_change.set_title('Rate of Change in Distance')
+        self.ax_change.grid(True)
         
-        # Create empty line objects for closest point plot
-        # We'll plot x, y, z coordinates of the closest points
-        self.line_psm1_closest_x, = self.ax_points.plot([], [], 'r-', label='PSM1 Closest Point (X)')
-        self.line_psm1_closest_y, = self.ax_points.plot([], [], 'r--', label='PSM1 Closest Point (Y)')
-        self.line_psm1_closest_z, = self.ax_points.plot([], [], 'r:', label='PSM1 Closest Point (Z)')
-        
-        self.line_psm2_closest_x, = self.ax_points.plot([], [], 'b-', label='PSM2 Closest Point (X)')
-        self.line_psm2_closest_y, = self.ax_points.plot([], [], 'b--', label='PSM2 Closest Point (Y)')
-        self.line_psm2_closest_z, = self.ax_points.plot([], [], 'b:', label='PSM2 Closest Point (Z)')
-        
-        self.ax_points.legend(loc='upper right')
+        # Create empty line objects for distance change plot
+        self.line_psm1_change, = self.ax_change.plot([], [], 'r-', label='PSM1 Distance Change')
+        self.line_psm2_change, = self.ax_change.plot([], [], 'b-', label='PSM2 Distance Change')
+        self.ax_change.legend(loc='upper right')
         
         # Set tight layout
         plt.tight_layout(rect=[0, 0, 1, 0.96])
